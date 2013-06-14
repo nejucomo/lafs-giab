@@ -45,13 +45,16 @@ def parse_args(args):
         datefmt='%Y-%m-%dT%H:%M:%S%z',
         level=getattr(logging, opts.loglevel))
 
+    log = logging.getLogger('options')
+    optvars = dict(vars(opts))
+    runname = optvars.pop('run').__name__
+    log.debug('%r %r', runname, optvars)
+
     return opts
 
 
 def command_create(opts):
-    log = logging.getLogger('create')
-    log.debug('create --base-dir %r' % (opts.basedir,))
-    raise NotImplemented('create')
+    raise NotImplementedError('create')
 
 
 if __name__ == '__main__':
