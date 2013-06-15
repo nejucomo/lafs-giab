@@ -4,6 +4,7 @@ import argparse
 import errno
 import logging
 import os
+import re
 import subprocess
 import sys
 import time
@@ -73,33 +74,64 @@ class NodePaths (object):
             setattr(self, name, os.path.join(basedir, name))
 
 
+def with_log(f):
+    """A decorator which injects a logger named after the function."""
+    def wrapped(*args, **kw):
+        log = logging.getLogger(f.__name__)
+        return f(log, *args, **kw)
+
+    wrapped.__name__ = f.__name__
+    wrapped.__doc__ = f.__doc__
+
+    return wrapped
+
+
 def register_command(f, name=None):
     """Add command function f to CommandTable; may be used as a decorator."""
     if name is None:
         name = f.__name__
 
-    def log_wrapper(*args):
-        log = logging.getLogger(name)
-        return f(log, *args)
-
-    log_wrapper.__doc__ = f.__doc__
-
-    CommandTable[name] = log_wrapper
-
-    return log_wrapper
+    CommandTable[name] = f
+    return f
 
 
 @register_command
+@with_log
 def launch(log, opts, paths):
     """Start all nodes, creating and configuring each from scratch if necessary."""
 
     makedir_if_necessary(opts.basedir)
-    if makedir_if_necessary(paths.introducer):
-        log.info('Creating introducer')
-        run('tahoe', 'create-introducer', paths.introducer)
-    log.info('Starting introducer')
-    run('tahoe', 'start', '--basedir', paths.introducer)
+    make_node_if_necessary(paths, 'introducer')
+    start_node(paths, 'introducer')
 
+    if make_node_if_necessary(paths, 'node'):
+        introfurl = poll_read_introducer_furl(paths)
+        configure_storage_node(paths, introfurl)
+
+    start_node(paths, 'node')
+
+
+@with_log
+def make_node_if_necessary(log, paths, nodename):
+    nodepath = getattr(paths, nodename)
+    if makedir_if_necessary(nodepath):
+        log.info('Creating %s', nodename)
+        run('tahoe', 'create-' + nodename, nodepath)
+        return True
+    else:
+        return False
+
+
+@with_log
+def start_node(log, paths, nodename):
+    nodepath = getattr(paths, nodename)
+
+    log.info('Starting %s', nodename)
+    run('tahoe', 'start', '--basedir', nodepath)
+
+
+@with_log
+def poll_read_introducer_furl(log, paths):
     introfurlpath = os.path.join(paths.introducer, 'private', 'introducer.furl')
 
     opened = False
@@ -109,16 +141,55 @@ def launch(log, opts, paths):
         (opened, f) = std_try(errno.ENOENT, open, introfurlpath, 'rb')
 
     with f:
-        introfurl = f.read()
+        introfurl = f.read().strip()
 
-    log.info('Found introducer.furl: %r', introfurl)
+    log.debug('Found introducer.furl: %r', introfurl)
+    return introfurl
 
-    raise NotImplementedError()
+
+INTRODUCER_CFG_RGX = re.compile(r'^introducer\.furl = None$', re.MULTILINE)
+ENCODING_CFG_RGX = re.compile(r'^#shares\.(needed|happy|total) = \d+$', re.MULTILINE)
+
+class ConfigurationFailure (Exception): pass
+
+
+@with_log
+def configure_storage_node(log, paths, introfurl):
+    log.info('Reconfiguring node %r', paths.node)
+    cfgpath = os.path.join(paths.node, 'tahoe.cfg')
+
+    with file(cfgpath, 'r') as f:
+        cfgtext = f.read()
+
+    def replace_introducer(m):
+        replacement = 'introducer.furl = ' + introfurl
+        log.debug('Replacing introducer %r with %r', m.groups(), replacement)
+        return replacement
+
+    (cfgtext, repls) = INTRODUCER_CFG_RGX.subn(replace_introducer, cfgtext)
+    if repls != 1:
+        raise ConfigurationFailure(
+            'Failed to configure the storage node introducer; the config file had an unexpected format.')
+
+
+    def replace_encoding(m):
+        replacement = 'shares.%s = 1' % (m.group(1),)
+        log.debug('Replacing encoding parameter %r %r with %r', m.group(), m.groups(), replacement)
+        return replacement
+
+    (cfgtext, repls) = ENCODING_CFG_RGX.subn(replace_encoding, cfgtext)
+    if repls != 3:
+        raise ConfigurationFailure(
+            'Failed to configure the storage node encodings; the config file had an unexpected format.')
+
+    with file(cfgpath, 'w') as f:
+        f.write(cfgtext)
 
 
 
 def register_standard_dispatch_command(commandname):
 
+    @with_log
     def cmd_impl(log, opts, paths):
 
         for name in paths.Names:
@@ -139,10 +210,10 @@ del cmdname
 
 
 
-def run(command, *args):
+@with_log
+def run(log, command, *args):
     argv = (command,) + args
 
-    log = logging.getLogger('command %r' % (command,))
     log.debug('Running: %r', argv) # Wishlit: escape for /bin/sh cut'n'paste compatibility.
 
     proc = subprocess.Popen(args=argv)
