@@ -3,7 +3,7 @@
 from setuptools import setup
 
 
-setup(name='lafs_giab',
+setup(name='lafs-giab',
       description='Configure/start/stop a self-contained Tahoe-LAFS grid.',
       version='0.1',
       author='Nathan Wilcox',

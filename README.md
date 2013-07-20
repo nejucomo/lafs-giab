@@ -25,4 +25,11 @@ It is implemented by calling to the `tahoe` command in subprocesses.
 ## Dependencies
 
 A somewhat recent version of [Python](https://python.org) and a version of
-[Tahoe-LAFS](https://tahoe-lafs.org) of version 1.10 or greater.
+[Tahoe-LAFS](https://tahoe-lafs.org) of version 1.9.1 or greater.
+
+### Platforms
+
+This has only been tested on debian squeeze with `python 2.7.3` and
+`allmydata-tahoe == 1.10.0`.  If you run into success or issues, please
+file tickets on the [github lafs-giab issue
+tracker](https://github.com/nejucomo/lafs-giab/issues).
