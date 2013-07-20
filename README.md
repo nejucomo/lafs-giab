@@ -22,6 +22,16 @@ backup support.
 
 It is implemented by calling to the `tahoe` command in subprocesses.
 
+## Installation
+
+   ```bash
+   $ pip install twisted # This is required due to bug https://tahoe-lafs.org/trac/tahoe-lafs/ticket/2032
+   $ pip install lafs-giab
+   ```
+
+If this does not work, please file a ticket on the [github lafs-giab
+issue tracker](https://github.com/nejucomo/lafs-giab/issues).
+
 ## Dependencies
 
 A somewhat recent version of [Python](https://python.org) and a version of
