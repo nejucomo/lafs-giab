@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
-from distutils.core import setup
+from setuptools import setup
+
 
 setup(name='lafs_giab',
       description='Configure/start/stop a self-contained Tahoe-LAFS grid.',
@@ -10,4 +11,5 @@ setup(name='lafs_giab',
       license='GPLv3',
       url='https://github.com/nejucomo/lafs-giab',
       scripts=['lafs_giab.py'],
+      install_requires=['allmydata-tahoe >= 1.9.1'],
       )
