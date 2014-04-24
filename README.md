@@ -35,7 +35,11 @@ issue tracker](https://github.com/nejucomo/lafs-giab/issues).
 ## Dependencies
 
 A somewhat recent version of [Python](https://python.org) and a version of
-[Tahoe-LAFS](https://tahoe-lafs.org) of version 1.9.1 or greater.
+[Tahoe-LAFS](https://tahoe-lafs.org) of version 1.10.0 or greater.
+
+Note: If you use an older version of Tahoe-LAFS and interested in
+`lafs-giab`, consider adding a comment to [Ticket #3: Consider supporting
+older versions of LAFS](https://github.com/nejucomo/lafs-giab/issues/3).
 
 ### Platforms
 
